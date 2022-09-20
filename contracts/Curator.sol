@@ -16,12 +16,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 
-import "hardhat/console.sol";
-
 import "./PhloteVote.sol";
 import "./Hotdrop.sol";
 
-/*import "./lib/IPFSStorage.sol";*/
 
 /// @title A factor and manager for "Hotdrop" NFTs (Phlote user-submitted-content).
 /// @author Zachary Fogg <me@zfo.gg>
@@ -54,10 +51,10 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
         Hotdrop hotdrop
     );
 
-    event Phlote(
+    event Cosign(
         address indexed cosigner,
         Hotdrop hotdrop,
-        uint256 generation
+        uint256 cosignEdition
     );
 
     modifier onlyOwner() {
@@ -116,17 +113,13 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
         _unpause();
     }
 
-    ////////// ONLY OWNER FUNCTIONS: ///////////
+    /*////////////////////////////////
+                Owner Only
+    ///////////////////////////////*/
 
     function setCuratorTokenMinimum(uint256 _curatorTokenMinimum) public onlyOwner {
         curatorTokenMinimum = _curatorTokenMinimum;
     }
-
-
-    // =================================================================================================
-
-    // We dont want this to be done manually. Everyone can curate, they just need to check if they meet minimum token requirement
-    // create SetMinimumTokenAmount()
 
 
     /// @dev Give an address the `CURATOR` role.
@@ -138,20 +131,12 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
 
 
 
-    // =================================================================================================
-
-    //Remove revoking, no need
-
-
     /// @dev Revoke an address's `CURATOR` role.
     /// @param _oldCurator The address of the curator to disallow from Phlote curation.
     function revokeCuratorRole(address _oldCurator) public onlyRole(CURATOR_ADMIN) {
         revokeRole(CURATOR, _oldCurator);
     }
 
-
-
-     // =================================================================================================
 
     /// @dev Create an NFT ("Hotdrop") of your musical internet findings that may be curated in the future.
     /// @param _ipfsURI The ipfs://Qm... URI of the metadata for this submission.
@@ -169,20 +154,6 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
         );
         return hotdrop;
     }
-
-
-     // =================================================================================================
-
-     //we dont want this to be curatoronly() we want this to check and make sure whoever is calling this has a balanceOf() >= minimumTokenAmount;; \\DONE
-
-     //since user paid 50 Phlote tokens: 15 sent to submitter of the song (artist), 35 to treasury.  \\DONE
-     // 15 sent to curator from treasury if its a Curator Hotdrop (not an artist submission)
-     //transferFrom not trasfer(), use the 50 tokens coming from the curator that called curate()  \\DONE
-
-     //currently, we are sending rewards to original submitter here, but we only want to do that if it was an artist and not a curator. If it was a curator, there is no paying for [50,60,...], we just take 15 to the treasury from wallet/contract.
-     //Maybe store whole supply in contract and build a function to transfer funds as needed if you are the owner()
-
-     //send cosign rewards to previous cosigners, to reward early cosigners = this should only happen to curator submissions and not artists.
 
 
     /// @dev Curate a Hotdrop NFT that was submitted to us. This function is for curating ARTIST HOTDROPS ONLY. NOT CURATOR HOTDROP SUBMISSIONS.
@@ -211,28 +182,22 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
             require(_hotdrop.totalSupply(_hotdrop.curatorCosignerNFT()) < 5, "Sorry! We have reached the maximum cosigns on this record.");
             _hotdrop.cosign(msg.sender);
 
-            // send the reward to the artist
-            phloteToken.transferFrom(treasury, msg.sender, _hotdrop.COSIGN_REWARD());
+            // send the reward to the original submitter
+            phloteToken.transferFrom(treasury, hotdropSubmitter, _hotdrop.COSIGN_REWARD());
 
             //send cosign rewards to previous cosigners, to reward early cosigners
-            for (uint256 i = 0; i < cosignNumber - 1; i++) {
-                ////////////////////////delete this console log before deployment///////////////////////
-                console.log("transfer to", i, cosigners[i], _hotdrop.COSIGN_REWARD());
-                phloteToken.transfer(cosigners[i], _hotdrop.COSIGN_REWARD());
+            for (uint256 i = 0; i < cosignNumber; i++) {
+            
+                phloteToken.transferFrom(treasury, cosigners[i], _hotdrop.COSIGN_REWARD());
             }
         }
         
-
-        
-        emit Phlote(
+        emit Cosign(
             msg.sender,
             _hotdrop,
             (cosignNumber + 1)
         );
     }
-
-     // =================================================================================================
-
 
     // admin withdraw {{{
     /// @dev The owner may withdraw all of the native funds.
@@ -263,18 +228,3 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
 
 // vim: set fdm=marker:
 
-
-
-
-
-/*
-
-To do:
-
-- Differentiate between an artist/curator
-
-Things changed:
-- test that the prices are paid in the right order: 50 to 90
-- check if emit in curator actually emite the right cosigner number (calling _hotdrop.cosigns() directly)
-
-*/

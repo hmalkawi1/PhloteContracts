@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import hre from "hardhat";
+import { any } from "hardhat/internal/core/params/argumentTypes";
 
 describe("Curator.sol", function () {
     let deployer: any, user1: any, user2 : any, user3:any, user4:any, user5:any, user6:any, treasury:any;
@@ -43,7 +44,7 @@ describe("Curator.sol", function () {
         }
         for(let i = 0; i<ids.length;i++){
             const userToApprove = usersArr[ids[i]];
-            await curator.connect(userToApprove).curate(drop);
+            await curator.connect(userToApprove).curate(drop)
         }
     }
     
@@ -63,10 +64,16 @@ describe("Curator.sol", function () {
             await phloteVote.transfer(userToApprove.address,1000)
         }
 
+    
+        
+
         const Curator = await hre.ethers.getContractFactory("Curator");
         curator = await Curator.deploy();
         await curator.deployed();
         await curator.initialize(phloteVote.address,treasury.address,deployer.address)
+
+        await phloteVote.transfer(treasury.address,1000)
+        await phloteVote.connect(treasury).approve(curator.address, 1000);
     });
 
     it("deploys PhloteVote & Curate",async function(){
@@ -108,7 +115,7 @@ describe("Curator.sol", function () {
         })
     })
 
-    describe("Curator functionality: ", async function(){
+    describe("Curator.sol", async function(){
         it("check pausability", async function(){
             await curator.pause();
             const artistURI= "www.aws.ca/urlOfHotDropArtist"
@@ -158,14 +165,22 @@ describe("Curator.sol", function () {
             await expect(curator.connect(user6).curate(drop)).to.be.revertedWith("Sorry! We have reached the maximum cosigns on this record.");
         })
 
-        //it("should emit cosign event once cosign is done",async function(){})
+        it("should emit Cosign event for each cosign",async function(){
+            let _ipfsURI = "ipfs://QmTz1aAoS6MXfHpGZpJ9YAGH5wrDsAteN8UHmkHMxVoNJk/1337.json"
+            let ArtistSubmission = true
+            let _drop = await newHotdrop(curator, deployer, _ipfsURI,ArtistSubmission)
+            await approveSignersTokens([0,1,2,3,4,5])
+            for(let i = 0;i<5;i++){
+                await expect(curator.connect(usersArr[i]).curate(_drop)).to.emit(curator, "Cosign").withArgs(usersArr[i].address, _drop,i+1);
+            }
+        })
 
         it("should allow cosigning of Artist submission:", async function(){
             let _ipfsURI = "ipfs://QmTz1aAoS6MXfHpGZpJ9YAGH5wrDsAteN8UHmkHMxVoNJk/1337.json"
             let ArtistSubmission = true
             drop = await newHotdrop(curator, deployer, _ipfsURI,ArtistSubmission)
             const _drop = await ethers.getContractAt("Hotdrop", drop as string)
-            await approveSignersTokens([0,1,2,3,4])
+            await approveSignersTokens([0,1,2,3,4,5])
             //submitter of the hotdrop:
             const artistAddress = deployer.address;
             
@@ -177,19 +192,76 @@ describe("Curator.sol", function () {
             4- NFT is minted and cosigner owns it:
                 - balance of each address is correct
                 - total supply correct
-            5- event is emitted
             */
             for(let i = 0;i<5;i++){
                 let artistPrevBalance = await phloteVote.balanceOf(artistAddress);
                 let treasuryPrevBalance = await phloteVote.balanceOf(treasury.address);
                 const prevBalance = await phloteVote.balanceOf(usersArr[i].address);
-                expect(await curateSigners([i],drop));
+                await curateSigners([i],drop);
                 expect(await phloteVote.balanceOf(usersArr[i].address)).to.eq(prevBalance - mintCosts[i]);
                 expect(await phloteVote.balanceOf(artistAddress)).to.eq(artistPrevBalance.add(mintCosts[i] - cosignReward));
                 expect(await phloteVote.balanceOf(treasury.address)).to.eq(treasuryPrevBalance.add(cosignReward));
                 expect(await _drop.balanceOf(usersArr[i].address,0)).to.eq(1);
                 expect(await _drop.totalSupply(0)).to.eq(i+1);
             }
+            //should fail here, just extra check
+            await expect(curator.connect(user6).curate(drop)).to.be.revertedWith("Sorry! We have reached the maximum cosigns on this record.");
+
+        })
+
+        it.only("should allow cosigning of Curator submission:", async function(){
+            let _ipfsURI = "ipfs://QmTz1aAoS6MXfHpGZpJ9YAGH5wrDsAteN8UHmkHMxVoNJk/1337.json"
+            let ArtistSubmission = false
+            drop = await newHotdrop(curator, deployer, _ipfsURI,ArtistSubmission)
+            const _drop = await ethers.getContractAt("Hotdrop", drop as string)
+            await approveSignersTokens([0,1,2,3,4,5])
+            //submitter of the hotdrop:
+            const curatorAddress = deployer.address;
+            let cosignersListBalances=[0,0,0,0,0];
+            
+            // Check each cosign for:
+            /*
+            1- right amount is transfered to original submitter
+            2- right amount is going to the previous cosigners
+            3- correct amount is deducted from treasury
+            4- NFT is minted and cosigner owns it:
+                - balance of each address is correct
+                - total supply correct
+            */
+            for(let i = 0;i<5;i++){
+                const [hotdropSubmitter, _isArtistSubmission, cosignersList] = await _drop.submissionDetails()
+                let curatorPrevBalance = await phloteVote.balanceOf(curatorAddress);
+                let treasuryPrevBalance = await phloteVote.balanceOf(treasury.address);
+                
+                // get balances of each address before each new cosign, so we can compare balances to it after cosign
+                for(let numberOfCosigner = 0; numberOfCosigner<=i; numberOfCosigner++){
+                    cosignersListBalances[numberOfCosigner] =  (await phloteVote.balanceOf(usersArr[numberOfCosigner].address)).toNumber();
+                }
+                
+                await curateSigners([i],drop);
+                
+                //insure original submitter of hotdrop is recieving their reward on each cosign
+                expect(await phloteVote.balanceOf(curatorAddress)).to.eq(curatorPrevBalance.add(cosignReward));
+                //insure correct amount is deducted from treasury on each cosign (cosignReward * (i + 1))
+                // Because on cosign where i = 0: -15 (reward to submitter), i = 1: -15 (reward to submitter) + -15 (reward to previous cosigner) etc... 
+                expect(await phloteVote.balanceOf(treasury.address)).to.eq(treasuryPrevBalance.sub(cosignReward * (i + 1)));
+                
+                // check tokens were distributed to previous cosigners and NOT current cosigner, check from end to beginning 
+                for(let j = i; j<0; j--){
+                    const balance = cosignersListBalances[j]
+                   expect(await phloteVote.balanceOf(cosignersList[j])).to.eq(balance + (cosignReward * (j + 1)));
+                }
+                if(i != 0){
+                    // check that current cosigner balance was never changed, and hasnt been set in our array (aka unchanged still)
+                    expect(await phloteVote.balanceOf(cosignersList[i])).to.eq(0);
+                }
+               
+                //Check cosignerNFT which is ID = 1, exists
+                expect(await _drop.balanceOf(usersArr[i].address,1)).to.eq(1);
+                expect(await _drop.totalSupply(1)).to.eq(i+1);
+            }
+            //should fail here, just extra check
+            await expect(curator.connect(user6).curate(drop)).to.be.revertedWith("Sorry! We have reached the maximum cosigns on this record.");
 
         })
     })

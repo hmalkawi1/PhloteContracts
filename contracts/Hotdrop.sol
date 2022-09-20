@@ -14,6 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
+
 /// @custom:security-contact nohackplz@phlote.xyz
 contract Hotdrop is
     ERC1155,
@@ -96,8 +97,14 @@ contract Hotdrop is
     }
 
     function mint(address account, uint256 id, uint256 amount, bytes memory data) public onlyOwner {
-        require(totalSupply(artistCosignerNFT) < submission.cosigners.length, "can't mint more");
-        submission.cosigners[totalSupply(artistCosignerNFT)] = account;
+        if(id == 0){
+            require(totalSupply(artistCosignerNFT) < submission.cosigners.length, "can't mint more");
+            submission.cosigners[totalSupply(artistCosignerNFT)] = account;
+        }
+        else{
+            require(totalSupply(curatorCosignerNFT) < submission.cosigners.length, "can't mint more");
+            submission.cosigners[totalSupply(curatorCosignerNFT)] = account;
+        }
         _mint(account, id, amount, data);
     }
 
@@ -118,13 +125,6 @@ contract Hotdrop is
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 
-    // =================================================================================================
-
-    // lets keep minting, However, charge the cosigner [50,60,70,80,90] tokens based on their cosign turn
-    // limit to 5 cosigns with phlote token 
-    //check if this works since this is an onlyOwner() and anyone can call it
-    //track cosigners in array - TO DO
-
     function cosign(address _cosigner) public cosignerExists(_cosigner) onlyOwner returns (uint256) {
         uint256 cosignType;
         if(submission.isArtistSubmission == true){
@@ -134,12 +134,11 @@ contract Hotdrop is
             cosignType = curatorCosignerNFT;
         }
         bytes memory mintData = abi.encodePacked(totalSupply(cosignType)+1);
+        
         mint(_cosigner, cosignType, 1, mintData);
 
         return totalSupply(cosignType);
     }
-
-    // =================================================================================================
 
     function cosigns() public view returns (uint256, address[5] memory) {
         // INFO: https://docs.openzeppelin.com/contracts/4.x/api/token/erc1155#ERC1155Supply
@@ -157,12 +156,3 @@ contract Hotdrop is
         return(submission.submitter,submission.isArtistSubmission,submission.cosigners);
     }
 }
-
-/*
-Things changed:
-
-- rename function phlote->cosign
-- test that the prices are paid in the right order: 50 to 90
-- test no cosigner duplication and submitter cant vote on their own 
-
-*/
