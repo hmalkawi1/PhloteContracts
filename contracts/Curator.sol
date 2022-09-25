@@ -11,7 +11,6 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts/interfaces/IERC1155.sol";
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
@@ -29,8 +28,7 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
     using SafeMathUpgradeable for uint256;
     using StringsUpgradeable for uint256;
     using CountersUpgradeable for CountersUpgradeable.Counter;
-    using SafeERC20 for IERC20;
-    using SafeERC20 for PhloteVote;
+
     using AddressUpgradeable for address payable;
 
     address public admin;
@@ -62,9 +60,6 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
         _;
     }
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    // constructor() { return; }
-
     /// @dev The constructor function. It also calls the upgrade function.
     /// @param _phloteToken Phlote's ERC20 DAO token.
     function initialize(PhloteVote _phloteToken, address _treasury, address _curatorAdmin) public initializer {
@@ -76,7 +71,7 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
         _grantRole(CURATOR_ADMIN, msg.sender);
         _setRoleAdmin(CURATOR, CURATOR_ADMIN);
         _grantRole(CURATOR, msg.sender);
-        curatorTokenMinimum = 1;
+        curatorTokenMinimum = 50;
 
         _onUpgrade(_phloteToken, _treasury, _curatorAdmin);
         /*if (vote.allowance(address(this)) < vote.MAX_SUPPLY()) {*/

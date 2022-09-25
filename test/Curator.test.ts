@@ -1,7 +1,6 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import hre from "hardhat";
-import { any } from "hardhat/internal/core/params/argumentTypes";
 
 describe("Curator.sol", function () {
     let deployer: any, user1: any, user2 : any, user3:any, user4:any, user5:any, user6:any, treasury:any;
@@ -209,7 +208,7 @@ describe("Curator.sol", function () {
 
         })
 
-        it.only("should allow cosigning of Curator submission:", async function(){
+        it("should allow cosigning of Curator submission:", async function(){
             let _ipfsURI = "ipfs://QmTz1aAoS6MXfHpGZpJ9YAGH5wrDsAteN8UHmkHMxVoNJk/1337.json"
             let ArtistSubmission = false
             drop = await newHotdrop(curator, deployer, _ipfsURI,ArtistSubmission)
