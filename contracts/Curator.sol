@@ -116,6 +116,11 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
         curatorTokenMinimum = _curatorTokenMinimum;
     }
 
+    function setAddresses(address _treasury, address _curatorAdmin) public onlyOwner {
+        treasury = _treasury;
+        curatorAdmin = _curatorAdmin;
+    }
+
 
     /// @dev Give an address the `CURATOR` role.
     /// @param _newCurator The address of the curator who has enough PhloteVote tokes to curate for us.
