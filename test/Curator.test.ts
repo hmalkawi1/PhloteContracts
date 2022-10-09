@@ -54,8 +54,9 @@ describe("Curator.sol", function () {
     });
 
     beforeEach(async function () {
+        let amountToMint = 1400000000000;
         const PhloteVote = await hre.ethers.getContractFactory("PhloteVote");
-        phloteVote = await PhloteVote.deploy();
+        phloteVote = await PhloteVote.deploy(amountToMint);
         await phloteVote.deployed();
         //disperse tokens to all 5 users
         for(let i = 0;i<usersArr.length;i++){
@@ -234,7 +235,6 @@ describe("Curator.sol", function () {
             for(let i = 0;i<5;i++){
                 const [hotdropSubmitter, _isArtistSubmission, cosignersList] = await _drop.submissionDetails()
                 let curatorPrevBalance = await phloteVote.balanceOf(curatorAddress);
-                let treasuryPrevBalance = await phloteVote.balanceOf(treasury.address);
                 let PhloteVotePrevSupply = await phloteVote.totalSupply();
                 
                 // get balances of each address before each new cosign, so we can compare balances to it after cosign

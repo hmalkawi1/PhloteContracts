@@ -23,6 +23,7 @@ contract PhloteVote is ERC20, ERC20Burnable, Pausable, ERC20Permit {
     using SafeERC20 for PhloteVote;
     using Address for address payable;
 
+    //currently not being used. Do we need to cap it?
     uint256 public MAX_SUPPLY = 140000 * 10 ** decimals();
     address public owner;
     address public admin;
@@ -32,9 +33,9 @@ contract PhloteVote is ERC20, ERC20Burnable, Pausable, ERC20Permit {
         _;
     }
 
-    constructor() ERC20("Phlote Vote", "PV1") ERC20Permit("Phlote Vote") {
+    constructor(uint256 _amountToMint) ERC20("Phlote Vote", "PV1") ERC20Permit("Phlote Vote") {
         owner = msg.sender;
-        _mint(msg.sender, MAX_SUPPLY);
+        _mint(msg.sender, _amountToMint);
     }
 
     function setAdmin(address _admin) public onlyOwner {
