@@ -42,6 +42,13 @@ contract Curator is Initializable, PausableUpgradeable, AccessControlEnumerableU
     bytes32 public constant CURATOR       = keccak256("CURATOR");
     bytes32 public constant CURATOR_ADMIN = keccak256("CURATOR_ADMIN");
 
+    Artist[] artists;
+    
+    struct Artist{
+        address artist;
+        uint256 split;
+    }
+
     event Submit(
         address indexed submitter,
         string ipfsURI,
