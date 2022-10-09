@@ -73,6 +73,8 @@ describe("Curator.sol", function () {
 
         await phloteVote.transfer(treasury.address,1000)
         await phloteVote.connect(treasury).approve(curator.address, 1000);
+
+        await phloteVote.setAdmin(curator.address);
     });
 
     it("deploys PhloteVote & Curate",async function(){
@@ -187,7 +189,7 @@ describe("Curator.sol", function () {
             /*
             1- right amount is deducted from cosigner
             2- right amount is going to the artist
-            3- correct amount is sent to treasury
+            3- correct amount is minted to treasury from PhloteVote
             4- NFT is minted and cosigner owns it:
                 - balance of each address is correct
                 - total supply correct
@@ -195,11 +197,13 @@ describe("Curator.sol", function () {
             for(let i = 0;i<5;i++){
                 let artistPrevBalance = await phloteVote.balanceOf(artistAddress);
                 let treasuryPrevBalance = await phloteVote.balanceOf(treasury.address);
+                let PhloteVotePrevSupply = await phloteVote.totalSupply();
                 const prevBalance = await phloteVote.balanceOf(usersArr[i].address);
                 await curateSigners([i],drop);
                 expect(await phloteVote.balanceOf(usersArr[i].address)).to.eq(prevBalance - mintCosts[i]);
                 expect(await phloteVote.balanceOf(artistAddress)).to.eq(artistPrevBalance.add(mintCosts[i] - cosignReward));
                 expect(await phloteVote.balanceOf(treasury.address)).to.eq(treasuryPrevBalance.add(cosignReward));
+                expect(await phloteVote.totalSupply()).to.eq(PhloteVotePrevSupply.add(mintCosts[i]));
                 expect(await _drop.balanceOf(usersArr[i].address,0)).to.eq(1);
                 expect(await _drop.totalSupply(0)).to.eq(i+1);
             }
@@ -222,7 +226,7 @@ describe("Curator.sol", function () {
             /*
             1- right amount is transfered to original submitter
             2- right amount is going to the previous cosigners
-            3- correct amount is deducted from treasury
+            3- correct amount is minted to treasury from PhloteVote
             4- NFT is minted and cosigner owns it:
                 - balance of each address is correct
                 - total supply correct
@@ -231,6 +235,7 @@ describe("Curator.sol", function () {
                 const [hotdropSubmitter, _isArtistSubmission, cosignersList] = await _drop.submissionDetails()
                 let curatorPrevBalance = await phloteVote.balanceOf(curatorAddress);
                 let treasuryPrevBalance = await phloteVote.balanceOf(treasury.address);
+                let PhloteVotePrevSupply = await phloteVote.totalSupply();
                 
                 // get balances of each address before each new cosign, so we can compare balances to it after cosign
                 for(let numberOfCosigner = 0; numberOfCosigner<=i; numberOfCosigner++){
@@ -241,9 +246,9 @@ describe("Curator.sol", function () {
                 
                 //insure original submitter of hotdrop is recieving their reward on each cosign
                 expect(await phloteVote.balanceOf(curatorAddress)).to.eq(curatorPrevBalance.add(cosignReward));
-                //insure correct amount is deducted from treasury on each cosign (cosignReward * (i + 1))
+                //insure correct amount is minted from phloteVote on each cosign (cosignReward * (i + 1))
                 // Because on cosign where i = 0: -15 (reward to submitter), i = 1: -15 (reward to submitter) + -15 (reward to previous cosigner) etc... 
-                expect(await phloteVote.balanceOf(treasury.address)).to.eq(treasuryPrevBalance.sub(cosignReward * (i + 1)));
+                expect(await phloteVote.totalSupply()).to.eq(PhloteVotePrevSupply.add(cosignReward * (i + 1)));
                 
                 // check tokens were distributed to previous cosigners and NOT current cosigner, check from end to beginning 
                 for(let j = i; j<0; j--){

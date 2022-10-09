@@ -4,7 +4,6 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -16,7 +15,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 
 /// @custom:security-contact nohackplz@phlote.xyz
-contract PhloteVote is ERC20, ERC20Burnable, Pausable, Ownable, ERC20Permit {
+contract PhloteVote is ERC20, ERC20Burnable, Pausable, ERC20Permit {
     using SafeMath for uint256;
     using Strings for uint256;
     using Counters for Counters.Counter;
@@ -25,9 +24,21 @@ contract PhloteVote is ERC20, ERC20Burnable, Pausable, Ownable, ERC20Permit {
     using Address for address payable;
 
     uint256 public MAX_SUPPLY = 140000 * 10 ** decimals();
+    address public owner;
+    address public admin;
+
+    modifier onlyOwner() {
+        require(msg.sender == admin || msg.sender == owner, "You do not have access to this function.");
+        _;
+    }
 
     constructor() ERC20("Phlote Vote", "PV1") ERC20Permit("Phlote Vote") {
+        owner = msg.sender;
         _mint(msg.sender, MAX_SUPPLY);
+    }
+
+    function setAdmin(address _admin) public onlyOwner {
+        admin = _admin;
     }
 
     function pause() public onlyOwner {
