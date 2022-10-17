@@ -1,13 +1,15 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import hre from "hardhat";
+import { deploy } from "@openzeppelin/hardhat-upgrades/dist/utils";
 
-describe("Curator.sol", function () {
+describe("Contracts: ", function () {
     let deployer: any, user1: any, user2 : any, user3:any, user4:any, user5:any, user6:any, treasury:any;
     let phloteVote: any;
     let curator:any;
     let drop: any;
     let usersArr: Array<any>;
+    let phlote_MAX_SUPPLY = 14000000000000000000;
 
     //change these when changing the contract!!!
     //Contract configs:
@@ -54,7 +56,7 @@ describe("Curator.sol", function () {
     });
 
     beforeEach(async function () {
-        let amountToMint = 1400000000000;
+        let amountToMint = 1400000;
         const PhloteVote = await hre.ethers.getContractFactory("PhloteVote");
         phloteVote = await PhloteVote.deploy(amountToMint);
         await phloteVote.deployed();
@@ -268,6 +270,25 @@ describe("Curator.sol", function () {
             await expect(curator.connect(user6).curate(drop)).to.be.revertedWith("Sorry! We have reached the maximum cosigns on this record.");
 
         })
+    })
+
+    describe("PhloteVote.sol", async function(){
+        it("should only allow minting until max supply and fail to mint more", async function(){
+            const currSupply = await phloteVote.totalSupply()
+            await phloteVote.setMAXSUPPLY(currSupply.add(1000))
+            await phloteVote.mint(deployer.address, currSupply.add(1000))
+            expect(await phloteVote.MAX_SUPPLY()).to.eq(await phloteVote.totalSupply())
+            await expect(phloteVote.mint(deployer.address, currSupply.add(1000))).to.be.revertedWith("You have reached your maximum Supply for mint")
+        })
+
+        it("should mint the difference between max supply and mint amount if greater than max_Supply and stop there",async function(){
+            const currSupply = await phloteVote.totalSupply()
+            await phloteVote.setMAXSUPPLY(currSupply.add(1000))
+            await phloteVote.mint(deployer.address, currSupply.add(100000))
+            expect(await phloteVote.MAX_SUPPLY()).to.eq(await phloteVote.totalSupply())
+            await expect(phloteVote.mint(deployer.address, currSupply.add(1000))).to.be.revertedWith("You have reached your maximum Supply for mint")
+        })
+
     })
 })
 

@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-
+import "hardhat/console.sol";
 
 /// @custom:security-contact nohackplz@phlote.xyz
 contract PhloteVote is ERC20, ERC20Burnable, Pausable, ERC20Permit {
@@ -24,9 +24,13 @@ contract PhloteVote is ERC20, ERC20Burnable, Pausable, ERC20Permit {
     using Address for address payable;
 
     //currently not being used. Do we need to cap it?
-    uint256 public MAX_SUPPLY = 140000 * 10 ** decimals();
+    uint256 public MAX_SUPPLY = 14 * 10 ** decimals();
     address public owner;
     address public admin;
+
+    event MaxSupplyChange(
+        uint256 newTotalSupply
+    );
 
     modifier onlyOwner() {
         require(msg.sender == admin || msg.sender == owner, "You do not have access to this function.");
@@ -42,6 +46,11 @@ contract PhloteVote is ERC20, ERC20Burnable, Pausable, ERC20Permit {
         admin = _admin;
     }
 
+    function setMAXSUPPLY(uint256 _maxSupply) public onlyOwner {
+        MAX_SUPPLY = _maxSupply;
+        emit MaxSupplyChange(MAX_SUPPLY);
+    }
+
     function pause() public onlyOwner {
         _pause();
     }
@@ -51,7 +60,15 @@ contract PhloteVote is ERC20, ERC20Burnable, Pausable, ERC20Permit {
     }
 
     function mint(address to, uint256 amount) public onlyOwner {
-        _mint(to, amount);
+        require(this.totalSupply() != MAX_SUPPLY, "You have reached your maximum Supply for mint");
+        if(MAX_SUPPLY - this.totalSupply() < amount){
+            _mint(to, MAX_SUPPLY - this.totalSupply() );
+        }
+
+        else{
+            _mint(to, amount);
+
+        }
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount)
